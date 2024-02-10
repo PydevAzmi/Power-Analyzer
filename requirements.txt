@@ -1,0 +1,6 @@
+customtkinter==5.2.2
+darkdetect==0.8.0
+packaging==23.2
+pillow==10.2.0
+pyserial==3.5
+tk==0.1.0

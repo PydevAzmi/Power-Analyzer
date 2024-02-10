@@ -1,0 +1,1 @@
+Simple Tkinter-based GUI application interfaces with a hardware device to collect data related to electrical power.

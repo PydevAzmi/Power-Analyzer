@@ -11,7 +11,7 @@ class PowerAnalyzer(tk.Tk):
 
         self.title("Power Analyzer")
         self.resizable(height=0, width=0)
-        ico = ImageTk.PhotoImage(Image.open(r'images.png'))
+        ico = ImageTk.PhotoImage(Image.open(r'media\\images.png'))
         self.iconphoto(True, ico)
         
         container = customtkinter.CTkFrame(self)
@@ -26,14 +26,14 @@ class PowerAnalyzer(tk.Tk):
             self.frames[Frame] = frame
             frame.grid(row=0, column=0, sticky="nsew")
 
-        self.show_frame(PageOne)
+        self.show_frame(StartPage)
 
     def show_frame(self, container):
         frame = self.frames[container]
         frame.tkraise()
 
     def set_bg(self, canvas):
-        my_image = customtkinter.CTkImage(light_image=Image.open(r"background.jpeg"),
+        my_image = customtkinter.CTkImage(light_image=Image.open(r"media\\background.jpeg"),
                                   size=(1030, 720))
         image_label = customtkinter.CTkLabel(canvas, image=my_image, text="")
         image_label.image = my_image
@@ -116,3 +116,4 @@ class PageOne(customtkinter.CTkFrame):
         
 app = PowerAnalyzer()
 app.mainloop()
+
