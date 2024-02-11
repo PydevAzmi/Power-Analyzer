@@ -4,3 +4,4 @@ packaging==23.2
 pillow==10.2.0
 pyserial==3.5
 tk==0.1.0
+#mekotop84=123@@123
