@@ -3,9 +3,8 @@ import customtkinter
 from tkinter import * 
 from PIL import Image, ImageTk
 import serial
+import mplcursors
 import serial.tools.list_ports as serialport
-import random 
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from time import sleep
@@ -14,7 +13,7 @@ from time import sleep
 class PowerAnalyzer(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self,*args, **kwargs)
-
+        #customtkinter.CTk.__init__(self,*args, **kwargs)
         self.title("Power Analyzer")
         self.resizable(height=0, width=0)
         ico = ImageTk.PhotoImage(Image.open(r'media\\images.png'))
@@ -51,6 +50,9 @@ class StartPage(customtkinter.CTkFrame):
         canvas = customtkinter.CTkCanvas(self)
         canvas.pack()
         controller.set_bg(canvas)
+        self.serialIns= serial.Serial()
+        self.a, self.b, self.c, self.d = [],[],[],[]
+
         canvas1 = customtkinter.CTkFrame(canvas,
                                         height=350,
                                         width=350,
@@ -110,10 +112,16 @@ class StartPage(customtkinter.CTkFrame):
                     # Navigate to PageOne
                     controller.show_frame(PageOne)
                     # Implement logic to start listening to data in four phases
-                    data_list = self.sliding_window(50)
+                    
+                    print(str(com_port[:4]))
+                    self.serialIns.port = str(com_port[:4])
+                    self.serialIns.open()
+                    self.serialIns.write(int(hours_range))
+                    print(self.serialIns)
+                    data_list = self.sliding_window(900, int(hours_range))
                     self.fig = plt.figure()                                      
                     self.ax = self.fig.add_subplot()                                  
-                    ani = animation.FuncAnimation(self.fig, self.animate, frames=40, fargs=(data_list,), interval=100) 
+                    self.ani = animation.FuncAnimation(self.fig, self.animate, frames=40, fargs=(data_list,), interval=100) 
                     plt.show()                 
                 else:
                     self.warn_lbl.configure(text_color="red" ,text="* Please Select Port!")
@@ -131,27 +139,42 @@ class StartPage(customtkinter.CTkFrame):
     def optionmenu_callback(self, choice):
         print("optionmenu dropdown clicked:", choice)
 
-    def sliding_window(self, window_size):
-        data_list =[220]*window_size
-        if len(data_list) < window_size:
-            return data_list
-        for i in range(500 - window_size + 1):
-            rand = random.randint(210,230)
-            data_list.append(rand)
-            yield data_list[i:i+window_size]
+
+    def sliding_window(self, window_size, hours=1):
+        self.a, self.b, self.c, self.d = [100]*window_size, [10]*window_size, [20]*window_size, [220]*window_size
+        for i in range(hours * 3600):
+            for _ in range(4):
+                data = self.serialIns.read(2)
+                print(data)
+                if b"a" in data:
+                    data = int(int.from_bytes(data[1:], "big")* 5 * 0.00489 * 72.1438)
+                    self.a.append(int(data))
+                    yield [self.a,"L1"]
+                elif b"b" in data:
+                    data = int(int.from_bytes(data[1:], "big")* 5 * 0.00489 * 71.9475)
+                    self.b.append(int(data))
+                    yield [self.b,"L2"]
+                elif b"c" in data:
+                    data = int(int.from_bytes(data[1:], "big")* 5 * 0.00489 * 71.5859)
+                    self.c.append(int(data))
+                    yield [self.c,"L3"]
+                elif b"d" in data:
+                    data = int(int.from_bytes(data[1:], "big")* 5 * 0.00489 * 0.4462)
+                    self.d.append(int(data))
+                    yield [self.d,"Neutral"]
+                
 
     def animate(self,i, data_list:list):
         self.ax.clear()
-        self.ax.plot(next(data_list))
-        self.ax.plot(next(data_list))
-        self.ax.plot(next(data_list))
-        self.ax.plot(next(data_list))
-        sleep(0.1)
-        self.ax.set_ylim([140, 260])                                
+        for _ in range(4):
+            data = next(data_list)
+            self.ax.plot(data[0],label=data[1])
+        self.ax.set_ylim([140, 260])
         self.ax.set_title("Voltage Changes")                        
         self.ax.set_ylabel("Voltage") 
-
-
+        self.ax.legend()
+        mplcursors.cursor(hover= mplcursors.HoverMode.Transient).connect("add", lambda sel: sel.annotation.set_text(f"{sel.artist.get_label()}: {sel.target[1]:.2f}"))
+        
 class PageOne(customtkinter.CTkFrame):
     def __init__(self, parent, controller):
         customtkinter.CTkFrame.__init__(self, parent)
