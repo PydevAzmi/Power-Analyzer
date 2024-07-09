@@ -50,8 +50,8 @@ The data is saved in an SQLite database for future reference and analysis.
   ```
 
 ### Acknowledgments
-    - Developed using various open-source libraries and tools.
+- Developed using various open-source libraries and tools.
 
 ### License
-    - This project is licensed under the MIT License.
+- This project is licensed under the MIT License.
 
