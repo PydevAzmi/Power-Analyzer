@@ -43,6 +43,8 @@ from tkinter import messagebox, ttk
 from tkinter import *
 from PIL import Image, ImageTk
 
+# pyinstaller -n "Power Analyzer v2.1" -i media/images.png --onefile -w tk-power-analyzer.py
+
 # Main application class contains the navigation system and app style 
 class PowerAnalyzer(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -181,7 +183,7 @@ class StartPage(customtkinter.CTkFrame):
             font=("Scripts",18) ,
             text_color="#555555",
             )
-        label2.place(relx=0.5, rely=0.18, anchor=CENTER)
+        label2.place(relx=0.5, rely=0.23, anchor=CENTER)
 
         # Hours input & Postion in frame
         self.sv = StringVar()
@@ -195,7 +197,7 @@ class StartPage(customtkinter.CTkFrame):
             text_color="black", 
             fg_color="#ffffff",
             )
-        self.hours_range_entry.place(relx=0.5, rely=0.25, anchor=CENTER)
+        self.hours_range_entry.place(relx=0.5, rely=0.3, anchor=CENTER)
 
         # Palce name input & Postion in frame 
         label3_text = get_display( arabic_reshaper.reshape(" ادخل اسم المكان"))
@@ -205,7 +207,7 @@ class StartPage(customtkinter.CTkFrame):
             font=("Scripts",18) ,
             text_color="#555555"
             )
-        label3.place(relx=0.5, rely=0.35, anchor=CENTER)
+        label3.place(relx=0.5, rely=0.4, anchor=CENTER)
         self.located_at = customtkinter.CTkEntry(
             canvas1, 
             placeholder_text="e.g., Warsha", 
@@ -213,12 +215,7 @@ class StartPage(customtkinter.CTkFrame):
             text_color="black", 
             fg_color="#ffffff",
             )
-        self.located_at.place(relx=0.5, rely=0.42, anchor=CENTER)
-
-        # Check Button to display the live presentation of data 
-        is_live_text = get_display(arabic_reshaper.reshape("تسجيل في الخلفيه"))
-        self.is_live = customtkinter.CTkCheckBox(canvas1, text=is_live_text, font=("Scripts",16) ,)
-        self.is_live.place(relx=0.5, rely=0.52, anchor=CENTER)
+        self.located_at.place(relx=0.5, rely=0.47, anchor=CENTER)
 
         # Start Button
         start_text = get_display( arabic_reshaper.reshape("ابدأ الرصد"))
@@ -396,7 +393,10 @@ class StartPage(customtkinter.CTkFrame):
             self.ploting(L3, "L3", rows[0][1], "yellow", start_time)
             self.ploting(Neutral, "Neutral", rows[0][1], "black", start_time)
             self.plotingall([L1, L2, L3, Neutral], rows[0][1], start_time)
+            # if opened only appear not start another window.
+            
 
+        
         root = tk.Tk()
         root.title("View Data")
         tree = ttk.Treeview(root)
@@ -420,7 +420,11 @@ class StartPage(customtkinter.CTkFrame):
         tree.bind("<Return>", show_values)
         tree.bind("<Delete>", delete_record)
 
-        root.mainloop()
+        if root.winfo_exists():
+            root.deiconify()
+        else:
+            root.mainloop()
+
         plt.close()
 
     # Plot the saved record values, one phase.
@@ -429,9 +433,9 @@ class StartPage(customtkinter.CTkFrame):
         It retrieves a list of records from the database and displays them in a table.
         It also provides the option to delete a record from the table.
         """
-        fig = plt.figure(num=f"Power Analyzer")
-        fig.suptitle(plot_text, fontsize=16)                                      
-        ax = fig.add_subplot()
+        my_fig = plt.figure(num=f"Power Analyzer")
+        my_fig.suptitle(plot_text, fontsize=16)                                      
+        ax = my_fig.add_subplot()
         ax.clear()
         li = json.loads(plot_list)
         ax.plot(li, label=plot_label, color=plot_color)
@@ -454,9 +458,9 @@ class StartPage(customtkinter.CTkFrame):
         It retrieves a list of records from the database and displays them in a table.
         It also provides the option to delete a record from the table.
         """
-        fig = plt.figure(num=f"Power Analyzer")
-        fig.suptitle(plot_text, fontsize=16)
-        ax = fig.add_subplot()
+        my_fig = plt.figure(num=f"Power Analyzer")
+        my_fig.suptitle(plot_text, fontsize=16)
+        ax = my_fig.add_subplot()
         ax.clear()
         L1= json.loads(plot_list[0])
         ax.plot(L1, label="L1", color="Red")
@@ -603,21 +607,27 @@ class PageOne(customtkinter.CTkFrame):
         This function reads data from the serial port and adds it to the data queue.
         """
         current_label = b''
+        i = 1
         while not self.stop_event.is_set():
-         if datetime.datetime.now() >= self.end_time:
-            self.close_connection()
-            break
-            
-         data = self.serial_instance.read(1)
-         if len(data) == 1:
-            if data in self.labels_factors:
-                current_label = data
-            elif current_label:
-                value = int(int.from_bytes(data, 'big') * self.labels_factors[current_label])
-                self.data_queue.put((current_label, value))
-                #print(current_label, value)
-                current_label = None
-    
+            if datetime.datetime.now() >= self.end_time:
+                self.close_connection()
+                break
+
+            if datetime.datetime.now() >= (self.start_time + datetime.timedelta(hours=24)):
+                self.save(i)
+                i += 1
+                self.start_time = datetime.datetime.now()
+
+            data = self.serial_instance.read(1)
+            if len(data) == 1:
+                if data in self.labels_factors:
+                    current_label = data
+                elif current_label:
+                    value = int(int.from_bytes(data, 'big') * self.labels_factors[current_label])
+                    self.data_queue.put((current_label, value))
+                    #print(current_label, value)
+                    current_label = None
+
     def update_values(self):
         """
         This function updates the values in the data queue and adds them to the labels_values dictionary.
@@ -661,6 +671,37 @@ class PageOne(customtkinter.CTkFrame):
         self.ax.clear()
         self.update_plot()
 
+    def save(self, i = None):
+        """
+        This function saves the data to the database.
+        """
+        # Save Records to Database
+        connection_obj = sqlite3.connect('PowerAnalyzer.db')
+        cursor_obj = connection_obj.cursor()
+        l1_values_list_str = json.dumps(self.labels_values[b'a'])
+        l2_values_list_str = json.dumps(self.labels_values[b'b'])
+        l3_values_list_str = json.dumps(self.labels_values[b'c'])
+        neutral_values_list_str = json.dumps(self.labels_values[b'd'])
+        text = self.text
+        if i is not None:
+           text = get_display(arabic_reshaper.reshape(f"{self.text} {i}"))
+        insert_query = 'INSERT INTO Power_Analyzer (location, l1_values, l2_values, l3_values, neutral_values, hours, start_time, day) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        cursor_obj.execute(
+         insert_query,
+         (
+            text,
+            l1_values_list_str,
+            l2_values_list_str,
+            l3_values_list_str,
+            neutral_values_list_str,
+            self.hours,
+            self.start_time,
+            self.today
+            ))
+        connection_obj.commit()
+        connection_obj.close()
+        self.labels_values = {b'a': [], b'b': [], b'c': [], b'd': []}
+
     def close_connection(self):
         """
         This function closes the serial connection and stops the read thread.
@@ -676,29 +717,7 @@ class PageOne(customtkinter.CTkFrame):
         plt.close()
         self.stop_event.clear()
         
-        # Save Records to Database
-        connection_obj = sqlite3.connect('PowerAnalyzer.db')
-        cursor_obj = connection_obj.cursor()
-        l1_values_list_str = json.dumps(self.labels_values[b'a'])
-        l2_values_list_str = json.dumps(self.labels_values[b'b'])
-        l3_values_list_str = json.dumps(self.labels_values[b'c'])
-        neutral_values_list_str = json.dumps(self.labels_values[b'd'])
-        insert_query = 'INSERT INTO Power_Analyzer (location, l1_values, l2_values, l3_values, neutral_values, hours, start_time, day) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-        cursor_obj.execute(
-         insert_query,
-         (
-            self.text,
-            l1_values_list_str,
-            l2_values_list_str,
-            l3_values_list_str,
-            neutral_values_list_str,
-            self.hours,
-            self.start_time,
-            self.today
-            ))
-        connection_obj.commit()
-        connection_obj.close()
-        self.labels_values = {b'a': [], b'b': [], b'c': [], b'd': []}
+        self.save()
         self.controller.show_frame(StartPage)
 
 # Set the system to prevent sleep mode

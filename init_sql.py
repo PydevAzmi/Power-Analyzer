@@ -19,12 +19,16 @@ CREATE TABLE Power_Analyzer (
     l3_values TEXT,
     neutral_values TEXT,
     hours FLOAT,
-    start_time TEXT
+    start_time TEXT,
+    day TEXT
 );
 """
 
 insert= """
 INSERT INTO Power_Analyzer (location, l1_values, hours) VALUES ('New York', '1.23,4.56,7.89', 5.5);
+"""
+delete = """
+DELETE FROM Power_Analyzer WHERE ID=25 ;
 """
 cursor_obj.execute(table)
 
